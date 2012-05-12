@@ -1,1 +1,11 @@
 target/
+
+.DS_Store
+
+build/
+
+nbproject
+
+nbbuild.xml
+
+lib/
