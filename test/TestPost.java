@@ -45,8 +45,7 @@ public class TestPost extends UnitTest {
         FlowControlHelper helper = FlowControlHelper.getInstance();
         helper.setUrl(url);
         helper.setApiKey(apiKey);
-        boolean result = helper.send(new RuntimeException("fooooo"));
-        assertTrue(result);
+        helper.send(new RuntimeException("fooooo"));
     }
 
     @Test
@@ -58,8 +57,7 @@ public class TestPost extends UnitTest {
             String word = null;
             word.length();
         } catch (NullPointerException npe) {
-            boolean result = helper.send(npe);
-            assertTrue(result);
+            helper.send(npe);
         }
 
         try {
@@ -68,8 +66,7 @@ public class TestPost extends UnitTest {
                 arr[i].length();
             }
         } catch (IndexOutOfBoundsException ioobe) {
-            boolean result = helper.send(ioobe);
-            assertTrue(result);
+            helper.send(ioobe);
         }
     }
 
@@ -78,7 +75,6 @@ public class TestPost extends UnitTest {
         FlowControlHelper helper = FlowControlHelper.getInstance();
         helper.setUrl(url);
         helper.setApiKey(apiKey);
-        boolean result = helper.send(new TestException("this is a custom Test Exception"));
-        assertTrue(result);
+        helper.send(new TestException("this is a custom Test Exception"));
     }
 }

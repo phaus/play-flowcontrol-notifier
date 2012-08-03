@@ -7,32 +7,27 @@
 package de.javastream.flowcontrol.notifier;
 
 import play.mvc.Http.Request;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import play.Logger;
+import play.Play;
+import play.libs.F;
+import play.libs.WS;
+import play.mvc.Controller;
+import play.mvc.Http;
 
-public class FlowControlHelper {
+public class FlowControlHelper extends Controller {
 
     private final static FlowControlHelper INSTANCE = new FlowControlHelper();
-    private URL url;
+    private String url;
     private String apiKey;
     private String version = "2.2";
-    private String env = "TestEnv";
     private String hostname = null;
 
     public static FlowControlHelper getInstance() {
         return INSTANCE;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
     }
 
     public void setVersion(String version) {
@@ -40,11 +35,7 @@ public class FlowControlHelper {
     }
 
     public void setUrl(String url) {
-        try {
-            this.url = new URL(url);
-        } catch (MalformedURLException ex) {
-            throw new RuntimeException(url + " is not a valid URL!");
-        }
+        this.url = url;
     }
 
     public void setApiKey(String apiKey) {
@@ -64,41 +55,28 @@ public class FlowControlHelper {
         return hostname;
     }
 
-    public boolean send(Exception exeption, Request request) {
-        OutputStreamWriter wr = null;
-        try {
-            HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
-            httpConnection.setDoOutput(true);
-            httpConnection.setRequestProperty("content-type", "application/xml; charset=utf-8");
-
-            wr = new OutputStreamWriter(httpConnection.getOutputStream());
-            String notice = getNotice(apiKey, exeption, request);
-            Logger.getLogger(FlowControlHelper.class.getName()).log(Level.INFO, "sending:\n{0}\n", notice);
-            wr.write(notice);
-            wr.flush();
-
-            int status = httpConnection.getResponseCode();
-            if (status == HttpURLConnection.HTTP_OK) {
-                return true;
-            } else {
-                Logger.getLogger(FlowControlHelper.class.getName()).log(Level.WARNING, "status was: {0}", status);
-            }
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(FlowControlHelper.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(FlowControlHelper.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                wr.close();
-            } catch (IOException ex) {
-                Logger.getLogger(FlowControlHelper.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        return false;
+    public void sendThrowable(Throwable throwable, Request request) {
+        sendException((Exception) throwable, request);
     }
 
-    public boolean send(Exception exeption) {
-        return send(exeption, null);
+    public void sendException(Exception exeption, Request request) {
+        String notice = getNotice(apiKey, exeption, request);
+        F.Promise<WS.HttpResponse> r1 = WS.url(url).setHeader("content-type", "text/xml; charset=utf-8").body(notice).postAsync();
+        F.Promise<List<WS.HttpResponse>> promises = F.Promise.waitAll(r1);
+        await(promises, new F.Action<List<WS.HttpResponse>>() {
+            public void invoke(List<WS.HttpResponse> httpResponses) {
+                WS.HttpResponse response = httpResponses.get(0);
+                if(response != null && Http.StatusCode.OK == response.getStatus()){
+                    Logger.info(response.getString()+" was sucessfully send!");
+                } else {
+                    Logger.warn("could not send Notification!");
+                }
+            }
+        });
+    }
+    
+    public void send(Exception exeption) {
+        sendException(exeption, null);
     }
 
     public String getNotice(String apiKey, Exception ex, Request request) {
@@ -123,14 +101,16 @@ public class FlowControlHelper {
             notice.append(getRequest(request));
         }
         notice.append("<server-environment>");
-        notice.append("<project-root>").append(getHostName()).append("</project-root>");
-        notice.append("<environment-name>").append(env).append("</environment-name>");
+        notice.append("<project-root>").append(Play.applicationPath).append("</project-root>");
+        notice.append("<environment-name>").append(Play.id).append("</environment-name>");
+        notice.append("<hostname>").append(getHostName()).append("</hostname>");
         notice.append("</server-environment>");
         notice.append("</notice>");
         return notice.toString();
     }
 
     public String getRequest(Request request) {
+        hostname = request.host;
         StringBuilder req = new StringBuilder();
         req.append("<request>");
         req.append("<url>").append(request.url).append("</url>");
