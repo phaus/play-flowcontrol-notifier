@@ -61,7 +61,7 @@ public class FlowControlHelper extends Controller {
 
     public void sendException(Exception exeption, Request request) {
         String notice = getNotice(apiKey, exeption, request);
-        F.Promise<WS.HttpResponse> r1 = WS.url(url).setHeader("content-type", "text/xml; charset=utf-8").body(notice).postAsync();
+        F.Promise<WS.HttpResponse> r1 = WS.url(url).setHeader("content-type", "text/xml; charset=utf-8").body(notice).timeout("60s").postAsync();
         F.Promise<List<WS.HttpResponse>> promises = F.Promise.waitAll(r1);
         await(promises, new F.Action<List<WS.HttpResponse>>() {
             public void invoke(List<WS.HttpResponse> httpResponses) {
