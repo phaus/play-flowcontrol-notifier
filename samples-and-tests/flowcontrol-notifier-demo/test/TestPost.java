@@ -1,8 +1,8 @@
 
+import de.javastream.flowcontrol.notifier.FlowControlHelper;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import org.junit.Test;
-import de.javastream.flowcontrol.notifier.FlowControlHelper;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.Properties;
@@ -17,19 +17,19 @@ import play.test.UnitTest;
  */
 public class TestPost extends UnitTest {
 
-    private String url;
-    private String apiKey;
+    private static String url;
+    private static String apiKey;
     
     public static void main(String args[]) throws MalformedURLException {
         TestPost tp = new TestPost();
-        tp.setup();
+        setup();
         tp.testPost();
         tp.testExtendedException();
         tp.testCustomException();
     }
 
     @BeforeClass
-    public void setup(){
+    public static void setup(){
         Properties props = new Properties();
         try {
             props.load(new FileInputStream(new File("test/test.properties")));

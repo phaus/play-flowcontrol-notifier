@@ -10,3 +10,11 @@ nbbuild.xml
 
 lib/
 test/test.properties
+
+dist/*
+
+samples-and-tests/flowcontrol-notifier-demo/modules/*
+
+samples-and-tests/flowcontrol-notifier-demo/tmp
+
+samples-and-tests/flowcontrol-notifier-demo/test-result/*

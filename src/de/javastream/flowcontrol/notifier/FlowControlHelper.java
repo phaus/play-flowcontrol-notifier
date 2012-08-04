@@ -17,6 +17,7 @@ import play.libs.F;
 import play.libs.WS;
 import play.mvc.Controller;
 import play.mvc.Http;
+import play.mvc.Http.Header;
 
 public class FlowControlHelper extends Controller {
 
@@ -46,7 +47,6 @@ public class FlowControlHelper extends Controller {
         if (hostname == null) {
             try {
                 InetAddress addr = InetAddress.getLocalHost();
-                byte[] ipAddr = addr.getAddress();
                 hostname = addr.getHostName();
             } catch (UnknownHostException ex) {
                 hostname = "N/A";
@@ -64,17 +64,18 @@ public class FlowControlHelper extends Controller {
         F.Promise<WS.HttpResponse> r1 = WS.url(url).setHeader("content-type", "text/xml; charset=utf-8").body(notice).timeout("60s").postAsync();
         F.Promise<List<WS.HttpResponse>> promises = F.Promise.waitAll(r1);
         await(promises, new F.Action<List<WS.HttpResponse>>() {
+
             public void invoke(List<WS.HttpResponse> httpResponses) {
                 WS.HttpResponse response = httpResponses.get(0);
-                if(response != null && Http.StatusCode.OK == response.getStatus()){
-                    Logger.info(response.getString()+" was sucessfully send!");
+                if (response != null && Http.StatusCode.OK == response.getStatus()) {
+                    Logger.info(response.getString() + " was sucessfully send!");
                 } else {
-                    Logger.warn("could not send Notification!");
+                    Logger.warn("Notification was not send! Error: " + response.getStatus());
                 }
             }
         });
     }
-    
+
     public void send(Exception exeption) {
         sendException(exeption, null);
     }
@@ -110,19 +111,34 @@ public class FlowControlHelper extends Controller {
     }
 
     public String getRequest(Request request) {
-        hostname = request.host;
         StringBuilder req = new StringBuilder();
         req.append("<request>");
         req.append("<url>").append(request.url).append("</url>");
         req.append("<component>").append(request.controller).append("</component>");
         req.append("<action>").append(request.action).append("</action>");
+        req.append("<params>");
         if (request.params != null) {
-            req.append("<params>");
             Map<String, String> data = request.params.allSimple();
             req.append(getValues(data));
-            req.append("</params>");
-            req.append("</request>");
         }
+        req.append("</params>");
+        req.append("<cgi-data>");
+        req.append("<var key=\"headers\">");
+        if (request.headers != null) {
+            Header header;
+            for (String key : request.headers.keySet()) {
+                header = request.headers.get(key);
+                req.append("<var key=\"").append(key).append("\">").append(header.value()).append("</var>");
+            }
+        }
+        req.append("</var>");
+        req.append("<var key=\"HTTPS\">").append(request.secure ? "ON" : "OFF").append("</var>");
+        req.append("<var key=\"SERVER_PORT\">").append(request.port).append("</var>");
+        req.append("<var key=\"SERVER_NAME\">").append(request.host).append("</var>");
+        req.append("<var key=\"PATH_INFO\">").append(request.path).append("</var>");
+        req.append("</cgi-data>");
+        req.append("</request>");
+
         return req.toString();
     }
 

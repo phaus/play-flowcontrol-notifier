@@ -1,4 +1,4 @@
-self: play -> flowcontrol 0.1
+self: play -> flowcontrol-notifier 0.1
 
 require:
     - play

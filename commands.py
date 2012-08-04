@@ -1,10 +1,10 @@
 # Here you can create play commands that are specific to the module, and extend existing commands
 
-MODULE = 'flowcontrol-plugin'
+MODULE = 'play-flowcontrol-notifier'
 
 # Commands that are specific to your module
 
-COMMANDS = ['flowcontrol-plugin:hello']
+COMMANDS = ['play-flowcontrol-notifier:hello']
 
 def execute(**kargs):
     command = kargs.get("command")
@@ -12,7 +12,7 @@ def execute(**kargs):
     args = kargs.get("args")
     env = kargs.get("env")
 
-    if command == "flowcontrol-plugin:hello":
+    if command == "play-flowcontrol-notifier:hello":
         print "~ Hello"
 
 
