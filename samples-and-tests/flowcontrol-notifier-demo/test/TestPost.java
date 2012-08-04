@@ -43,21 +43,17 @@ public class TestPost extends UnitTest {
     @Test
     public void testPost() {
         FlowControlHelper helper = FlowControlHelper.getInstance();
-        helper.setUrl(url);
-        helper.setApiKey(apiKey);
-        helper.send(new RuntimeException("fooooo"));
+
     }
 
     @Test
     public void testExtendedException() {
         FlowControlHelper helper = FlowControlHelper.getInstance();
-        helper.setUrl(url);
-        helper.setApiKey(apiKey);
         try {
             String word = null;
             word.length();
         } catch (NullPointerException npe) {
-            helper.send(npe);
+
         }
 
         try {
@@ -66,15 +62,12 @@ public class TestPost extends UnitTest {
                 arr[i].length();
             }
         } catch (IndexOutOfBoundsException ioobe) {
-            helper.send(ioobe);
+
         }
     }
 
     @Test
     public void testCustomException() {
         FlowControlHelper helper = FlowControlHelper.getInstance();
-        helper.setUrl(url);
-        helper.setApiKey(apiKey);
-        helper.send(new TestException("this is a custom Test Exception"));
     }
 }

@@ -1,46 +1,27 @@
 /**
- * FlowControlHelper
+ * FlowcontrolHelper
  * 12.05.2012
  * @author Philipp Haussleiter
  *
  */
-package de.javastream.flowcontrol.notifier;
+package play.modules.flowcontrol.notifier;
 
 import play.mvc.Http.Request;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
-import play.Logger;
 import play.Play;
-import play.libs.F;
-import play.libs.WS;
-import play.mvc.Controller;
-import play.mvc.Http;
+import play.exceptions.PlayException;
 import play.mvc.Http.Header;
+import play.mvc.Scope.Session;
 
-public class FlowControlHelper extends Controller {
+public class FlowcontrolHelper {
 
-    private final static FlowControlHelper INSTANCE = new FlowControlHelper();
-    private String url;
-    private String apiKey;
-    private String version = "2.2";
+    private final static FlowcontrolHelper INSTANCE = new FlowcontrolHelper();
     private String hostname = null;
 
-    public static FlowControlHelper getInstance() {
+    public static FlowcontrolHelper getInstance() {
         return INSTANCE;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
     }
 
     private String getHostName() {
@@ -55,34 +36,9 @@ public class FlowControlHelper extends Controller {
         return hostname;
     }
 
-    public void sendThrowable(Throwable throwable, Request request) {
-        sendException((Exception) throwable, request);
-    }
-
-    public void sendException(Exception exeption, Request request) {
-        String notice = getNotice(apiKey, exeption, request);
-        F.Promise<WS.HttpResponse> r1 = WS.url(url).setHeader("content-type", "text/xml; charset=utf-8").body(notice).timeout("60s").postAsync();
-        F.Promise<List<WS.HttpResponse>> promises = F.Promise.waitAll(r1);
-        await(promises, new F.Action<List<WS.HttpResponse>>() {
-
-            public void invoke(List<WS.HttpResponse> httpResponses) {
-                WS.HttpResponse response = httpResponses.get(0);
-                if (response != null && Http.StatusCode.OK == response.getStatus()) {
-                    Logger.info(response.getString() + " was sucessfully send!");
-                } else {
-                    Logger.warn("Notification was not send! Error: " + response.getStatus());
-                }
-            }
-        });
-    }
-
-    public void send(Exception exeption) {
-        sendException(exeption, null);
-    }
-
     public String getNotice(String apiKey, Exception ex, Request request) {
         StringBuilder notice = new StringBuilder();
-        notice.append("<notice version=\"").append(version).append("\">");
+        notice.append("<notice version=\"").append(Version.API_VERSION).append("\">");
         notice.append("<api-key>").append(apiKey).append("</api-key>");
         notice.append("<notifier>");
         notice.append("<name>" + Version.NAME + "</name>");
@@ -91,7 +47,13 @@ public class FlowControlHelper extends Controller {
         notice.append("</notifier>");
         notice.append("<error>");
         notice.append("<class>").append(ex.getClass().getName()).append("</class>");
-        notice.append("<message>").append(ex.getLocalizedMessage()).append("</message>");
+        notice.append("<message>");
+        if (ex instanceof PlayException) {
+            PlayException pe = (PlayException) ex;
+            notice.append(pe.getId()).append(" ");
+        }
+        notice.append(ex.getLocalizedMessage());
+        notice.append("</message>");
         notice.append("<backtrace>");
         for (StackTraceElement ele : ex.getStackTrace()) {
             notice.append("<line method=\"").append(ele.getMethodName()).append("\" file=\"").append(ele.getFileName()).append("\" number=\"").append(ele.getLineNumber()).append("\" />");
@@ -105,6 +67,7 @@ public class FlowControlHelper extends Controller {
         notice.append("<project-root>").append(Play.applicationPath).append("</project-root>");
         notice.append("<environment-name>").append(Play.id).append("</environment-name>");
         notice.append("<hostname>").append(getHostName()).append("</hostname>");
+        notice.append("<app-version>").append(Play.version).append("</app-version>");
         notice.append("</server-environment>");
         notice.append("</notice>");
         return notice.toString();
@@ -116,12 +79,14 @@ public class FlowControlHelper extends Controller {
         req.append("<url>").append(request.url).append("</url>");
         req.append("<component>").append(request.controller).append("</component>");
         req.append("<action>").append(request.action).append("</action>");
-        req.append("<params>");
+
         if (request.params != null) {
+            req.append("<params>");
             Map<String, String> data = request.params.allSimple();
             req.append(getValues(data));
+            req.append("</params>");
         }
-        req.append("</params>");
+
         req.append("<cgi-data>");
         req.append("<var key=\"headers\">");
         if (request.headers != null) {
@@ -136,7 +101,16 @@ public class FlowControlHelper extends Controller {
         req.append("<var key=\"SERVER_PORT\">").append(request.port).append("</var>");
         req.append("<var key=\"SERVER_NAME\">").append(request.host).append("</var>");
         req.append("<var key=\"PATH_INFO\">").append(request.path).append("</var>");
+
         req.append("</cgi-data>");
+        Map<String, String> sessionData = Session.current().all();
+        if (sessionData != null) {
+            req.append("<session>");
+            for (String key : sessionData.keySet()) {
+                req.append("<var key=\"").append(key).append("\">").append(sessionData.get(key)).append("</var>");
+            }
+            req.append("</session>");
+        }
         req.append("</request>");
 
         return req.toString();

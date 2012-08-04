@@ -1,10 +1,14 @@
 package controllers;
 
-import play.exceptions.ActionNotFoundException;
-
-public class Application extends ControllerNotifier {
+public class Application extends Notifier {
 
     public static void index() {
-        error("fooo");
+        render();
+    }
+
+    public static void error() {
+        String[] arr = {"foo", "bar", "212312", "123123"};
+        String value = arr[arr.length + 1];
+        render(value);
     }
 }
