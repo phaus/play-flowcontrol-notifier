@@ -1,6 +1,10 @@
 package controllers;
 
-public class Application extends Notifier {
+import play.mvc.Controller;
+import play.mvc.With;
+
+@With(Notifier.class)
+public class Application extends Controller {
 
     public static void index() {
         render();

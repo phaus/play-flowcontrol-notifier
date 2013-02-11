@@ -1,18 +1,20 @@
 /**
- * FlowcontrolHelper
- * 12.05.2012
+ * FlowcontrolHelper 12.05.2012
+ *
  * @author Philipp Haussleiter
  *
  */
 package play.modules.flowcontrol.notifier;
 
-import play.mvc.Http.Request;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.Map;
+import net.sf.oval.internal.util.StringUtils;
 import play.Play;
 import play.exceptions.PlayException;
 import play.mvc.Http.Header;
+import play.mvc.Http.Request;
 import play.mvc.Scope.Session;
 
 public class FlowcontrolHelper {
@@ -36,7 +38,7 @@ public class FlowcontrolHelper {
         return hostname;
     }
 
-    public String getNotice(String apiKey, Exception ex, Request request) {
+    public String getNotice(String apiKey, Exception ex, Request request, Session session) {
         StringBuilder notice = new StringBuilder();
         notice.append("<notice version=\"").append(Version.API_VERSION).append("\">");
         notice.append("<api-key>").append(apiKey).append("</api-key>");
@@ -48,10 +50,6 @@ public class FlowcontrolHelper {
         notice.append("<error>");
         notice.append("<class>").append(ex.getClass().getName()).append("</class>");
         notice.append("<message>");
-        if (ex instanceof PlayException) {
-            PlayException pe = (PlayException) ex;
-            notice.append(pe.getId()).append(" ");
-        }
         notice.append(ex.getLocalizedMessage());
         notice.append("</message>");
         notice.append("<backtrace>");
@@ -61,19 +59,19 @@ public class FlowcontrolHelper {
         notice.append("</backtrace>");
         notice.append("</error>");
         if (request != null) {
-            notice.append(getRequest(request));
+            notice.append(getRequest(request, session, ex));
         }
         notice.append("<server-environment>");
         notice.append("<project-root>").append(Play.applicationPath).append("</project-root>");
-        notice.append("<environment-name>").append(Play.id).append("</environment-name>");
+        notice.append("<environment-name>").append(getName()).append("</environment-name>");
         notice.append("<hostname>").append(getHostName()).append("</hostname>");
-        notice.append("<app-version>").append(Play.version).append("</app-version>");
+        notice.append("<app-version>").append(getVersion()).append("</app-version>");
         notice.append("</server-environment>");
         notice.append("</notice>");
         return notice.toString();
     }
 
-    public String getRequest(Request request) {
+    public String getRequest(Request request, Session session, Exception ex) {
         StringBuilder req = new StringBuilder();
         req.append("<request>");
         req.append("<url>").append(request.url).append("</url>");
@@ -82,8 +80,10 @@ public class FlowcontrolHelper {
 
         if (request.params != null) {
             req.append("<params>");
-            Map<String, String> data = request.params.allSimple();
-            req.append(getValues(data));
+            if (request.params != null) {
+                Map<String, String> data = simpleMap(request.params.data);
+                req.append(getValues(data));
+            }
             req.append("</params>");
         }
 
@@ -103,11 +103,20 @@ public class FlowcontrolHelper {
         req.append("<var key=\"PATH_INFO\">").append(request.path).append("</var>");
 
         req.append("</cgi-data>");
-        Map<String, String> sessionData = Session.current().all();
-        if (sessionData != null) {
+        if (session != null) {
             req.append("<session>");
-            for (String key : sessionData.keySet()) {
-                req.append("<var key=\"").append(key).append("\">").append(sessionData.get(key)).append("</var>");
+            if (ex instanceof PlayException) {
+                PlayException pe = (PlayException) ex;
+                req.append("<var key=\"").append("playExceptionId").append("\">").append(pe.getId()).append("</var>");
+                req.append("<var key=\"").append("playExceptionErrorDescription").append("\">").append(pe.getErrorDescription()).append("</var>");
+            }
+            Map<String, String> sessionData = session.all();
+            if (sessionData != null) {
+
+                for (String key : sessionData.keySet()) {
+                    req.append("<var key=\"").append(key).append("\">").append(sessionData.get(key)).append("</var>");
+                }
+
             }
             req.append("</session>");
         }
@@ -124,5 +133,27 @@ public class FlowcontrolHelper {
             }
         }
         return d.toString();
+    }
+
+    private static String getName() {
+        return Play.configuration.getProperty("application.name", "N/A") + " " + Play.id + " " + Play.configuration.getProperty("application.mode", "N/A");
+    }
+
+    private static String getVersion() {
+        return Play.configuration.getProperty("application.version", "N/A") + " " + Play.version;
+    }
+
+    private static Map<String, String> simpleMap(Map<String, String[]> params) {
+        Map<String, String> data = new HashMap<String, String>();
+        if (params != null) {
+            String[] values;
+            for (String key : params.keySet()) {
+                values = params.get(key);
+                if (values != null) {
+                    data.put(key, StringUtils.implode(values, ","));
+                }
+            }
+        }
+        return data;
     }
 }

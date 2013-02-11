@@ -18,3 +18,5 @@ samples-and-tests/flowcontrol-notifier-demo/modules/*
 samples-and-tests/flowcontrol-notifier-demo/tmp
 
 samples-and-tests/flowcontrol-notifier-demo/test-result/*
+
+samples-and-tests/flowcontrol-notifier-demo/logs/system.out
